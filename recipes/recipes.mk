@@ -119,6 +119,11 @@ _output/literate_reST.min.stdin.v: literate_reST.rst | _output/
 	cd ..; $(PYTHON) -m alectryon.literate --rst2coq - < recipes/$< > recipes/$@
 recipes_targets += _output/literate_reST.min.stdin.v
 
+# LaTeX → LaTeX
+_output/literate_tex.alectryon.tex: literate_tex.tex
+	$(alectryon) $<
+recipes_targets += _output/literate_tex.alectryon.tex
+
 # reST → HTML
 _output/mathjax.html: mathjax.rst
 	$(alectryon) $<

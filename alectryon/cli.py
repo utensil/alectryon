@@ -18,7 +18,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from typing import Tuple, List, Union
+from typing import Any, Dict, List, NamedTuple, Tuple, Union
 
 import argparse
 import inspect
@@ -33,6 +33,11 @@ from . import __version__, core
 # Pipelines
 # =========
 
+class Labeled(NamedTuple):
+    v: Any
+    lang: str
+    props: Dict[str, Any] = {}
+
 def read_plain(_, fpath, input_is_stdin):
     if input_is_stdin:
         return sys.stdin.read()
@@ -45,6 +50,27 @@ def read_json(_, fpath, input_is_stdin):
 
 def parse_plain(contents, fpath):
     return [core.PosStr(contents, core.Position(fpath, 1, 1), 0)]
+
+LATEX_IO_RE = re.compile(r"""
+^(?P<indent>[ ]*)\\begin[{]alectryon[}][{](?P<lang>.*?)[}][{](?P<flags>.*)[}][ ]*\n
+    (?P<body>(?:.|\n)*?)
+^[ ]*\\end[{]alectryon[}]
+""", re.VERBOSE | re.MULTILINE)
+
+def parse_latex(contents):
+    blocks, end = [], 0
+    for m in LATEX_IO_RE.finditer(contents):
+        if end < m.start():
+            blocks.append(Labeled(contents[end:m.start()], None, {}))
+        indent, lang, body, flags = m.group("indent", "lang", "body", "flags")
+        _, body = core.dedent(body.splitlines(), len(indent))
+        blocks.append(Labeled(body, lang, {"flags": flags}))
+        end = m.end() # TODO: Line numbers on body?
+    if end == 0:
+        raise ValueError
+    if end < len(contents):
+        blocks.append(Labeled(contents[end:], None, {}))
+    return blocks
 
 def _catch_parsing_errors(fpath, k, *args):
     from .literate import ParsingError
@@ -67,17 +93,70 @@ def rst_to_code(rst, fpath, point, marker, backend):
         assert False
     return _catch_parsing_errors(fpath, converter, rst, point, marker)
 
-def annotate_chunks(chunks, fpath, cache_directory, cache_compression,
-                    input_language, driver_name, driver_args, exit_code):
+class LabeledView:
+    def __init__(self, base, indices):
+        self.base = base
+        self.indices = indices
+        assert isinstance(base, list) and isinstance(indices, list)
+
+    def __len__(self):
+        return len(self.indices)
+
+    def __getitem__(self, idx):
+        idx = self.indices.__getitem__(idx)
+        return self.base[idx].v if isinstance(idx, int) else [self.base[i].v for i in idx]
+
+    def __setitem__(self, idx, val):
+        idx = self.indices.__getitem__(idx)
+        if isinstance(idx, int):
+            self.base[idx] = self.base[idx]._replace(v=val)
+        else:
+            for i, v in zip(idx, val):
+                self.base[i] = self.base[i]._replace(v=v)
+
+def _by_lang(labeled: List[Labeled]):
+    bylang = {}
+    assert isinstance(labeled, list)
+    for idx, chk in enumerate(labeled):
+        if chk.lang:
+            bylang.setdefault(chk.lang, []).append(idx)
+    return {lang: LabeledView(labeled, idxs) for lang, idxs in sorted(bylang.items())}
+
+def _update_inplace(destination, indices, elements):
+    for idx, ann in zip(indices, elements):
+        destination[idx] = destination[idx]._replace(v=ann)
+    return destination
+
+def _annotate_chunks(chunks, fpath, driver_config, cache, exit_code):
     from .core import StderrObserver
+    driver = driver_config.init_driver(fpath)
+    chunks = cache.update(chunks, driver)
+    assert isinstance(driver.observer, StderrObserver)
+    exit_code.val = int(exit_code.val or driver.observer.exit_code >= 3)
+    return chunks
+
+def annotate_by_language(chunks_by_language, fpath, cache_directory, cache_compression,
+                         driver_configs, exit_code):
     from .json import CacheSet
-    driver_cls = core.resolve_driver(input_language, driver_name)
-    driver = driver_cls(driver_args, fpath=fpath)
     with CacheSet(cache_directory, fpath, cache_compression) as caches:
-        annotated = caches[input_language].update(chunks, driver)
-        assert isinstance(driver.observer, StderrObserver)
-        exit_code.val = int(driver.observer.exit_code >= 3)
-        return annotated
+        return {lang: _annotate_chunks(chunks, fpath, driver_configs[lang],
+                                       caches[lang], exit_code)
+                for lang, chunks in sorted(chunks_by_language.items())}
+
+def annotate_labeled(labeled, fpath, cache_directory, cache_compression,
+                     driver_configs, exit_code):
+    views = _by_lang(labeled)
+    annotated = annotate_by_language(
+        views, fpath, cache_directory, cache_compression, driver_configs, exit_code)
+    for lang in annotated:
+        views[lang][:] = annotated[lang]
+    return labeled
+
+def annotate_chunks(chunks, fpath, cache_directory, cache_compression,
+                    input_language, driver_configs, exit_code):
+    return annotate_by_language(
+        {input_language: chunks}, fpath, cache_directory, cache_compression,
+        driver_configs, exit_code)[input_language]
 
 def register_docutils(v, ctx):
     from . import docutils
@@ -178,13 +257,23 @@ def _docutils_cmdline(description, frontend, backend, dialect):
         settings_overrides={'stylesheet_path': None},
         description="{} {}".format(description, default_description))
 
-def _scrub_fname(fname):
-    return re.sub("[^-a-zA-Z0-9]", "-", fname)
+def inherit_io_annots(labeled):
+    from .transforms import all_hidden, inherit_io_annots as inherit_annots
+    for l in labeled:
+        annots = l.props.get("annots")
+        if annots:
+            l = l._replace(v=inherit_annots(l.v, annots))
+            if all_hidden(l.v, annots): # Remove {none} blocks
+                l = l._replace(lang=None, v="")
+        yield l
 
 def apply_transforms(annotated, input_language):
     from .transforms import default_transform
     for fragments in annotated:
         yield default_transform(fragments, input_language)
+
+def _scrub_fname(fname):
+    return re.sub("[^-a-zA-Z0-9]", "-", fname)
 
 def gen_html_snippets(annotated, fname, input_language,
                       html_minification, pygments_style):
@@ -297,7 +386,7 @@ def copy_assets(state, assets: List[Tuple[str, Union[str, core.Asset]]],
 
 def dump_html_standalone(snippets, fname, webpage_style,
                          html_minification, include_banner, include_vernums,
-                         assets, html_classes, input_language, driver_name):
+                         assets, html_classes, input_language, driver_config):
     from dominate import tags, document
     from dominate.util import raw
     from . import GENERATOR
@@ -330,7 +419,7 @@ def dump_html_standalone(snippets, fname, webpage_style,
     cls = wrap_classes(webpage_style, *html_classes)
     root = doc.body.add(tags.article(cls=cls))
     if include_banner:
-        driver = core.resolve_driver(input_language, driver_name)
+        driver = core.resolve_driver(input_language, driver_config.name)
         root.add(raw(gen_banner([driver.version_info()], include_vernums)))
     for snippet in snippets:
         root.add(snippet)
@@ -349,19 +438,17 @@ def dump_json(js):
     from json import dumps
     return dumps(js, indent=4)
 
+def dump_snippets(snippets, separator):
+    return "".join(s.render(pretty=True) + separator for s in snippets)
+
 def dump_html_snippets(snippets):
-    s = ""
-    for snippet in snippets:
-        s += snippet.render(pretty=True)
-        s += "<!-- alectryon-block-end -->\n"
-    return s
+    return dump_snippets(snippets, "<!-- alectryon-block-end -->\n")
 
 def dump_latex_snippets(snippets):
-    s = ""
-    for snippet in snippets:
-        s += str(snippet)
-        s += "\n%% alectryon-block-end\n"
-    return s
+    return dump_snippets(snippets, "\n%% alectryon-block-end\n")
+
+def dump_labeled(labeled):
+    return "".join(str(lbl.v) for lbl in labeled)
 
 def write_output(ext, contents, fname, output, output_directory, strip_re):
     if output == "-":
@@ -379,6 +466,16 @@ def write_file(ext, strip):
     return lambda contents, fname, output, output_directory: \
         write_output(ext, contents, fname, output,
                      output_directory, strip_re=strip_re)
+
+def run_by_language(*pipeline):
+    def _dispatch(items, ctx):
+        """Group `items` by language, run `pipeline` on each group, and write back."""
+        items = list(items)
+        for lang, view in _by_lang(items).items():
+            ctx["input_language"] = lang
+            view[:] = run_pipeline(pipeline, view, ctx)
+        return items
+    return _dispatch
 
 EXTENSIONS_BY_LANGUAGE = {
     "coq": (".v"),
@@ -453,12 +550,18 @@ def _add_code_pipelines(pipelines, lang, *exts):
          write_file(".lint.json", strip=(*exts, ".rst"))),
     }
 
-def _add_coqdoc_pipeline(pipelines):
+def _add_special_pipelines(pipelines):
     pipelines['coqdoc'] = {
         'webpage':
         (read_plain, parse_plain, annotate_chunks, # transforms applied later
          gen_html_snippets_with_coqdoc, dump_html_standalone, copy_assets,
          write_file(".html", strip=(".v",))),
+    }
+    pipelines['latex'] = {
+        'latex':
+        (read_plain, parse_latex, annotate_labeled, run_by_language(apply_transforms),
+         inherit_io_annots, run_by_language(gen_latex_snippets), dump_labeled,
+         write_file(".alectryon.tex", strip=(".tex",))),
     }
 
 def _add_docutils_pipelines(pipelines, lang, *exts):
@@ -499,7 +602,7 @@ def _add_compatibility_pipelines(pipelines):
 def _add_pipelines(pipelines):
     for lang, exts in EXTENSIONS_BY_LANGUAGE.items():
         _add_code_pipelines(pipelines, lang, *exts)
-    _add_coqdoc_pipeline(pipelines)
+    _add_special_pipelines(pipelines)
     _add_docutils_pipelines(pipelines, "rst", ".rst")
     _add_docutils_pipelines(pipelines, "md", ".md")
     _add_transliteration_pipelines(pipelines)
@@ -525,6 +628,7 @@ FRONTENDS_BY_EXTENSION = [
       for lang, exts in EXTENSIONS_BY_LANGUAGE.items() for ext in exts
       for pair in _language_frontends_by_extension(ext, lang)),
 
+    ('.tex', 'latex'),
     ('.rst', 'rst'),
     ('.md', 'md'),
 
@@ -553,6 +657,7 @@ DEFAULT_BACKENDS = {
        for lang in core.ALL_LANGUAGES
        for (fr, bk) in _default_language_backends(lang).items()},
 
+    'latex': 'latex',
     'coqdoc': 'webpage',
     'rst': 'webpage',
     'md': 'webpage',
@@ -866,16 +971,20 @@ def build_context(fpath, args, frontend, backend):
 
     dialect = args.backend_dialects.get(backend)
 
+    driver_configs = {
+        lang: core.DriverConfig(lang, args.language_drivers, args.driver_args_by_name)
+        for lang in core.ALL_LANGUAGES
+    }
+
     # These may be ``None`` (e.g. in reST mode)
     input_language = INPUT_LANGUAGE_BY_FRONTEND.get(frontend)
-    driver_name = args.language_drivers.get(input_language)
-    driver_args = args.driver_args_by_name.get(driver_name, ())
+    driver_config = driver_configs.get(input_language)
 
     ctx = {**vars(args),
            "fpath": fpath, "fname": fname, "input_is_stdin": input_is_stdin,
            "frontend": frontend, "backend": backend, "dialect": dialect,
-           "input_language": input_language,
-           "driver_name": driver_name, "driver_args": driver_args,
+           "input_language": input_language, "driver_config": driver_config,
+           "driver_configs": driver_configs,
            "assets": [], "html_classes": [], "exit_code": ExitCode(0)}
     ctx["ctx"] = ctx
 
@@ -898,6 +1007,11 @@ def except_hook(etype, value, tb):
     for line in TracebackException(etype, value, tb, capture_locals=True).format():
         print(line, file=sys.stderr)
 
+def run_pipeline(pipeline, state, ctx):
+    for step in pipeline:
+        state = call_pipeline_step(step, state, ctx)
+    return state
+
 def process_pipelines(args):
     if args.debug:
         core.DEBUG = True
@@ -911,9 +1025,8 @@ def process_pipelines(args):
         serapi.SerAPI.EXPECT_UNEXPECTED = True
 
     for fpath, frontend, backend, pipeline in args.pipelines:
-        state, ctx = None, build_context(fpath, args, frontend, backend)
-        for step in pipeline:
-            state = call_pipeline_step(step, state, ctx)
+        ctx = build_context(fpath, args, frontend, backend)
+        run_pipeline(pipeline, None, ctx)
         yield ctx["exit_code"].val
 
 def main():
