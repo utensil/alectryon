@@ -7,6 +7,11 @@ Unreleased
 
 - **EXPERIMENTAL** Alectryon now has partial support for Lean 3. [GH-64]
 
+Bug fixes
+---------
+
+- Fix an issue with narrow spaces in Alectryon blocks in LaTeX export (revert changes to fontdimen parameters in inline ``:mquote:`` environments). [ba9fd6c5]
+
 Version 1.4.0
 =============
 
