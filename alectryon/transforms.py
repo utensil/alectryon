@@ -215,7 +215,7 @@ def inherit_io_annots(fragments, annots):
 def __read_io_comments(annots, contents, lang, must_match=True):
     for m in IO_COMMENT_RE[lang].finditer(str(contents)):
         _update_io_annots(annots, m.group(0), ONE_IO_ANNOT_RE, must_match=must_match)
-    return IO_COMMENT_RE[lang].sub("", str(contents))
+    return contents.re_sub(IO_COMMENT_RE[lang])
 
 def _contents(obj):
     if isinstance(obj, RichSentence):
@@ -810,8 +810,8 @@ DEFAULT_TRANSFORMS = {
     "lean4": [
         coalesce_text,
         enrich_sentences,
-        #read_io_comments("lean4"),
-        #process_io_annots
+        read_io_comments("lean4"),
+        process_io_annots
     ],
     # Not included:
     #   group_whitespace_with_code (HTML-specific)
