@@ -212,6 +212,18 @@ class HtmlGenerator(Backend):
                     assert output.goals, "transforms.commit_io_annotations"
                     self.gen_goals(output.goals)
 
+    @deduplicate(".alectryon-type-info")
+    def gen_typeinfo(self, typeinfo):
+        cls = "alectryon-type-info"
+        with tags.small(cls=cls).add(tags.div()):
+            with tags.span():
+                self.gen_names([typeinfo.name])
+                with tags.span(cls="hyp-type"):
+                    tags.b(": ")
+                    with tags.span():
+                        self.gen_code(typeinfo.type)
+                self.gen_mrefs(typeinfo)
+
     @staticmethod
     def gen_txt(s):
         return txt(s)
