@@ -597,9 +597,9 @@ def find_long_lines(fragments, threshold):
     for fr in fragments:
         if hasattr(fr, "props") and not _enabled(fr):
             continue
-        prefix += Token("".join(getattr(fr, "prefixes", ())), None, None)
-        suffix = Token("".join(getattr(fr, "suffixes", ())), None, None)
-        lines = FragmentContent(prefix.tokens + (_contents(fr) or FragmentContent()).tokens + [suffix]).split_at_str("\n")
+        prefix += Token("".join(getattr(fr, "prefixes", ())))
+        suffix = Token("".join(getattr(fr, "suffixes", ())))
+        lines = FragmentContent(prefix.tokens + (_contents(fr) or FragmentContent([])).tokens + [suffix]).split_at_str("\n")
         yield from _check_line_lengths(lines, linum, threshold, len(lines) - 1)
         linum += len(lines) - 1
         prefix = lines[-1]
@@ -786,6 +786,9 @@ def lean3_attach_commas(fragments):
                 grouped[idx] = Text(rest) if rest else None
     return [g for g in grouped if g is not None]
 
+def eval_debug_transform(fragments):
+    # Breakpoint
+    return fragments
 
 DEFAULT_TRANSFORMS = {
     "coq": [
@@ -811,7 +814,8 @@ DEFAULT_TRANSFORMS = {
         coalesce_text,
         enrich_sentences,
         read_io_comments("lean4"),
-        process_io_annots
+        process_io_annots,
+        eval_debug_transform
     ],
     # Not included:
     #   group_whitespace_with_code (HTML-specific)
