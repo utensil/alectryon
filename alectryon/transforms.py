@@ -777,8 +777,23 @@ def eval_debug_transform(fragments):
     # Breakpoint
     return fragments
 
+def transform_contents_to_tokens(fragments):
+    """ Compatibility method to replace str instances in Fragment.contents with new Token tuple:
+    >>> [Text(contents="abcd"), Text(contents=[FragmentToken(raw="xyz")])]
+    [Text(contents=FragmentContent([Token(raw="abcd", None, None)])), Text(contents=FragmentContent([Token(raw="abcd", None, None)]))]
+    """
+    new_fragments = []
+    for fragment in fragments:
+        if isinstance(fragment.contents, str):
+            new_fragments.append(fragment._replace(contents=FragmentContent.create(fragment.contents)))
+        else:
+            new_fragments.append(fragment)
+    return new_fragments
+
+
 DEFAULT_TRANSFORMS = {
     "coq": [
+        transform_contents_to_tokens,
         enrich_sentences,
         attach_comments_to_code("coq"),
         group_hypotheses,
@@ -788,6 +803,7 @@ DEFAULT_TRANSFORMS = {
         dedent,
     ],
     "lean3": [
+        transform_contents_to_tokens,
         lean3_attach_commas,
         lean3_split_comments,
         coalesce_text,
@@ -798,6 +814,7 @@ DEFAULT_TRANSFORMS = {
         process_io_annots
     ],
     "lean4": [
+        transform_contents_to_tokens,
         coalesce_text,
         enrich_sentences,
         read_io_comments("lean4"),
