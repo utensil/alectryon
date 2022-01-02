@@ -24,7 +24,7 @@ from pathlib import Path
 from alectryon import json
 
 from alectryon.json import PlainSerializer
-from .core import CLIDriver, EncodedDocument, FragmentContent, indent, Text, Token, update_contents_to_token_list
+from .core import CLIDriver, EncodedDocument, FragmentContent, indent, Text, FragmentToken, update_contents_to_token_list
 
 class Lean4(CLIDriver):
     BIN = "leanInk"
