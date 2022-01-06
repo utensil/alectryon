@@ -44,6 +44,10 @@ class Lean4(CLIDriver):
     LAKE_ENV_KEY = "--lake"
     LAKE_TMP_FILE_PATH = "lakefile.lean"
 
+    def __init__(self, args=(), fpath="-", binpath=None):
+        super().__init__(args, fpath, binpath)
+        self.lake_file_path = None
+
     def run_leanink_document(self, encoded_document):
         r"""
         Run LeanInk with encoded_document file.
