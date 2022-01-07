@@ -78,7 +78,7 @@ class Lean4(CLIDriver):
                 new_user_args = self.user_args[index + 2:]
                 break
             else:
-                new_user_args += arg
+                new_user_args += (arg,)
         self.user_args = new_user_args
 
     def annotate(self, chunks):
