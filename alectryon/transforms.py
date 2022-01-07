@@ -773,10 +773,6 @@ def lean3_attach_commas(fragments):
                 grouped[idx] = Text(rest) if rest else None
     return [g for g in grouped if g is not None]
 
-def eval_debug_transform(fragments):
-    # Breakpoint
-    return fragments
-
 def transform_contents_to_tokens(fragments):
     """ Compatibility method to replace str instances in Fragment.contents with new Token tuple:
     >>> [Text(contents="abcd"), Text(contents=[FragmentToken(raw="xyz")])]
@@ -819,8 +815,7 @@ DEFAULT_TRANSFORMS = {
         coalesce_text,
         enrich_sentences,
         read_io_comments("lean4"),
-        process_io_annots,
-        eval_debug_transform
+        process_io_annots
     ],
     # Not included:
     #   group_whitespace_with_code (HTML-specific)
