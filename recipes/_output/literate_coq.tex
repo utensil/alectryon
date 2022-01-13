@@ -10,38 +10,33 @@
 \usepackage{textcomp} % text symbol macros
 
 %%% Custom LaTeX preamble
-
-\usepackage[margin=1in]{geometry}
+% PDF Standard Fonts
+\usepackage{mathptmx} % Times
+\usepackage[scaled=.90]{helvet}
+\usepackage{courier}
 
 %%% User specified packages and stylesheets
 \usepackage{alectryon}
 \usepackage{pygments}
 
 %%% Fallback definitions for Docutils-specific commands
+
 % basic code highlight:
 \providecommand*\DUrolecomment[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
 \providecommand*\DUroledeleted[1]{\textcolor[rgb]{0.40,0.40,0.40}{#1}}
 \providecommand*\DUrolekeyword[1]{\textbf{#1}}
 \providecommand*\DUrolestring[1]{\textit{#1}}
 
-% inline markup (custom roles)
-% \DUrole{#1}{#2} tries \DUrole#1{#2}
+% custom inline roles: \DUrole{#1}{#2} tries \DUrole#1{#2}
 \providecommand*{\DUrole}[2]{%
   \ifcsname DUrole#1\endcsname%
     \csname DUrole#1\endcsname{#2}%
-  \else
-    % backwards compatibility: try \docutilsrole#1{#2}
-    \ifcsname docutilsrole#1\endcsname%
-      \PackageWarningNoLine{docutils}{Command prefix "docutilsrole" is
-         deprecated, \MessageBreak use `\protect\DUrole #1`}
-      \csname docutilsrole#1\endcsname{#2}%
-    \else%
-      #2%
-    \fi%
+  \else%
+    #2%
   \fi%
 }
 
-% transition (break, fancybreak, anonymous section)
+% transition (break / fancybreak / anonymous section)
 \providecommand*{\DUtransition}{%
   \hspace*{\fill}\hrulefill\hspace*{\fill}
   \vskip 0.5\baselineskip
@@ -115,11 +110,12 @@ Here's an \emph{inductive specification} of evenness:
       ~~\PY{o}{|}~\PY{l+m+mi}{0}~\PY{o}{=\PYZgt{}}~\PY{n}{true}\nl
       ~~\PY{o}{|}~\PY{l+m+mi}{1}~\PY{o}{=\PYZgt{}}~\PY{n}{false}\nl
       ~~\PY{o}{|}~\PY{n}{S}~\PY{o}{(}\PY{n}{S}~\PY{n}{n}\PY{o}{)}~\PY{o}{=\PYZgt{}}~\PY{n}{even}~\PY{n}{n}\nl
-      ~~\PY{k+kr}{end}\PY{o}{.}\nl
+      ~~\PY{k+kr}{end}\PY{o}{.}
     \end{input}
   \end{sentence}
   \sep
   \begin{txt}
+    \nl
     \nl
     \PY{c}{(*~Ensure~that~we~never~unfold~[even~(S~n)]~*)}\nl
   \end{txt}
@@ -157,6 +153,10 @@ Can we prove it correct?
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
       \PY{k+kn}{Proof}\PY{o}{.}
@@ -177,9 +177,14 @@ Can we prove it correct?
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{n+nb}{induction}~\PY{n}{n}\PY{o}{.}
+      \PY{n+nb}{induction}~\PY{n}{n}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -213,9 +218,14 @@ Can we prove it correct?
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{k+kp}{all}\PY{o}{:}~\PY{n+nb}{cbn}\PY{o}{.}
+      \PY{k+kp}{all}\PY{o}{:}~\PY{n+nb}{cbn}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -249,9 +259,14 @@ Can we prove it correct?
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~0~*)}
+      \PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~0~*)}
     \end{input}
     \sep
     \begin{output}
@@ -269,9 +284,14 @@ Can we prove it correct?
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{n+nb}{split}\PY{o}{.}
+      \PY{n+nb}{split}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -301,15 +321,25 @@ Can we prove it correct?
     \end{output}
   \end{sentence}
   \sep
-  \begin{sentence}
-    \begin{input}
-      ~~~~\PY{k+kp}{all}\PY{o}{:}~\PY{n+nb}{constructor}\PY{o}{.}\nl
-    \end{input}
-  \end{sentence}
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
   \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~S~\PYZus{}~*)}
+      \PY{k+kp}{all}\PY{o}{:}~\PY{n+nb}{constructor}\PY{o}{.}
+    \end{input}
+  \end{sentence}
+  \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
+  \begin{sentence}
+    \begin{input}
+      \PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~S~\PYZus{}~*)}
     \end{input}
     \sep
     \begin{output}
@@ -331,9 +361,14 @@ Can we prove it correct?
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{n+nb}{apply}~\PY{n}{IHn}\PY{o}{.}~\PY{c}{(*~stuck!~*)}
+      \PY{n+nb}{apply}~\PY{n}{IHn}\PY{o}{.}~\PY{c}{(*~stuck!~*)}
     \end{input}
     \sep
     \begin{output}
@@ -356,9 +391,13 @@ The induction hypothesis doesn't apply — maybe we need to destruct \texttt{n}?
 \begin{alectryon}
   % Generator: Alectryon
   \sep
+  \begin{txt}
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{n+nb}{destruct}~\PY{n}{n}\PY{o}{.}
+      \PY{n+nb}{destruct}~\PY{n}{n}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -394,9 +433,14 @@ The induction hypothesis doesn't apply — maybe we need to destruct \texttt{n}?
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{o}{+}~\PY{c}{(*~n~←~1~*)}
+      \PY{o}{+}~\PY{c}{(*~n~←~1~*)}
     \end{input}
     \sep
     \begin{output}
@@ -416,15 +460,25 @@ The induction hypothesis doesn't apply — maybe we need to destruct \texttt{n}?
     \end{output}
   \end{sentence}
   \sep
-  \begin{sentence}
-    \begin{input}
-      ~~~~~~\PY{n+nb}{split}\PY{o}{;}~\PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{.}\nl
-    \end{input}
-  \end{sentence}
+  \begin{txt}
+    \nl
+    ~~~~~~
+  \end{txt}
   \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{o}{+}~\PY{c}{(*~n~←~S~(S~\PYZus{})~*)}
+      \PY{n+nb}{split}\PY{o}{;}~\PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{.}
+    \end{input}
+  \end{sentence}
+  \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
+  \begin{sentence}
+    \begin{input}
+      \PY{o}{+}~\PY{c}{(*~n~←~S~(S~\PYZus{})~*)}
     \end{input}
     \sep
     \begin{output}
@@ -493,6 +547,10 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
       \PY{k+kn}{Proof}\PY{o}{.}
@@ -515,9 +573,14 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{n+nb}{induction}~\PY{n}{n}\PY{o}{;}~\PY{n+nb}{cbn}\PY{o}{.}
+      \PY{n+nb}{induction}~\PY{n}{n}\PY{o}{;}~\PY{n+nb}{cbn}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -552,9 +615,14 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~0~*)}
+      \PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~0~*)}
     \end{input}
     \sep
     \begin{output}
@@ -572,9 +640,14 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{k+kp}{repeat}~\PY{n+nb}{split}\PY{o}{;}~\PY{n+nb}{cbn}\PY{o}{.}
+      \PY{k+kp}{repeat}~\PY{n+nb}{split}\PY{o}{;}~\PY{n+nb}{cbn}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -614,9 +687,14 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{k+kp}{all}\PY{o}{:}~\PY{k+kp}{try}~\PY{n+nb}{constructor}\PY{o}{.}
+      \PY{k+kp}{all}\PY{o}{:}~\PY{k+kp}{try}~\PY{n+nb}{constructor}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -646,15 +724,25 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
-  \begin{sentence}
-    \begin{input}
-      ~~~~\PY{k+kp}{all}\PY{o}{:}~\PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{.}\nl
-    \end{input}
-  \end{sentence}
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
   \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~S~\PYZus{}~*)}
+      \PY{k+kp}{all}\PY{o}{:}~\PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{.}
+    \end{input}
+  \end{sentence}
+  \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
+  \begin{sentence}
+    \begin{input}
+      \PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~S~\PYZus{}~*)}
     \end{input}
     \sep
     \begin{output}
@@ -677,9 +765,14 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{n+nb}{destruct}~\PY{n}{IHn}~\PY{k+kr}{as}~\PY{o}{((}\PY{n}{Hne}~\PY{o}{\PYZam{}}~\PY{n}{HnE}\PY{o}{)}~\PY{o}{\PYZam{}}~\PY{o}{(}\PY{n}{HSne}~\PY{o}{\PYZam{}}~\PY{n}{HSnE}\PY{o}{)).}
+      \PY{n+nb}{destruct}~\PY{n}{IHn}~\PY{k+kr}{as}~\PY{o}{((}\PY{n}{Hne}~\PY{o}{\PYZam{}}~\PY{n}{HnE}\PY{o}{)}~\PY{o}{\PYZam{}}~\PY{o}{(}\PY{n}{HSne}~\PY{o}{\PYZam{}}~\PY{n}{HSnE}\PY{o}{)).}
     \end{input}
     \sep
     \begin{output}
@@ -708,9 +801,14 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{k+kp}{repeat}~\PY{n+nb}{split}\PY{o}{;}~\PY{n+nb}{cbn}\PY{o}{.}
+      \PY{k+kp}{repeat}~\PY{n+nb}{split}\PY{o}{;}~\PY{n+nb}{cbn}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -800,9 +898,14 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{k+kp}{all}\PY{o}{:}~\PY{n+nb}{eauto~using}~\PY{n}{EvenS}\PY{o}{.}
+      \PY{k+kp}{all}\PY{o}{:}~\PY{n+nb}{eauto~using}~\PY{n}{EvenS}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -830,11 +933,20 @@ The usual approach is to strengthen the spec to work around the weakness of the 
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{;}~\PY{n+nb}{eauto}\PY{o}{.}\nl
+      \PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{;}~\PY{n+nb}{eauto}\PY{o}{.}
     \end{input}
   \end{sentence}
+  \sep
+  \begin{txt}
+    \nl
+  \end{txt}
   \sep
   \begin{sentence}
     \begin{input}
@@ -879,6 +991,10 @@ But writing a fixpoint (either with the \texttt{\DUrole{code}{\DUrole{highlight}
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
       \PY{k+kn}{Proof}\PY{o}{.}
@@ -904,9 +1020,14 @@ But writing a fixpoint (either with the \texttt{\DUrole{code}{\DUrole{highlight}
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{n+nb}{destruct}~\PY{n}{n}~\PY{k+kr}{as}~\PY{o}{[}~\PY{o}{|}~\PY{o}{[}~\PY{o}{|}~\PY{n}{n}~\PY{o}{]}~\PY{o}{];}~\PY{n+nb}{cbn}\PY{o}{.}
+      \PY{n+nb}{destruct}~\PY{n}{n}~\PY{k+kr}{as}~\PY{o}{[}~\PY{o}{|}~\PY{o}{[}~\PY{o}{|}~\PY{n}{n}~\PY{o}{]}~\PY{o}{];}~\PY{n+nb}{cbn}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -957,9 +1078,14 @@ But writing a fixpoint (either with the \texttt{\DUrole{code}{\DUrole{highlight}
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~0~*)}
+      \PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~0~*)}
     \end{input}
     \sep
     \begin{output}
@@ -980,15 +1106,25 @@ But writing a fixpoint (either with the \texttt{\DUrole{code}{\DUrole{highlight}
     \end{output}
   \end{sentence}
   \sep
-  \begin{sentence}
-    \begin{input}
-      ~~~~\PY{k+kp}{repeat}~\PY{n+nb}{constructor}\PY{o}{.}\nl
-    \end{input}
-  \end{sentence}
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
   \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~1~*)}
+      \PY{k+kp}{repeat}~\PY{n+nb}{constructor}\PY{o}{.}
+    \end{input}
+  \end{sentence}
+  \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
+  \begin{sentence}
+    \begin{input}
+      \PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~1~*)}
     \end{input}
     \sep
     \begin{output}
@@ -1009,15 +1145,25 @@ But writing a fixpoint (either with the \texttt{\DUrole{code}{\DUrole{highlight}
     \end{output}
   \end{sentence}
   \sep
-  \begin{sentence}
-    \begin{input}
-      ~~~~\PY{n+nb}{split}\PY{o}{;}~\PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{.}\nl
-    \end{input}
-  \end{sentence}
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
   \sep
   \begin{sentence}
     \begin{input}
-      ~~\PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~S~(S~\PYZus{})~*)}
+      \PY{n+nb}{split}\PY{o}{;}~\PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{.}
+    \end{input}
+  \end{sentence}
+  \sep
+  \begin{txt}
+    \nl
+    ~~
+  \end{txt}
+  \sep
+  \begin{sentence}
+    \begin{input}
+      \PY{o}{\PYZhy{}}~\PY{c}{(*~n~←~S~(S~\PYZus{})~*)}
     \end{input}
     \sep
     \begin{output}
@@ -1040,9 +1186,14 @@ But writing a fixpoint (either with the \texttt{\DUrole{code}{\DUrole{highlight}
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{n+nb}{split}\PY{o}{.}
+      \PY{n+nb}{split}\PY{o}{.}
     \end{input}
     \sep
     \begin{output}
@@ -1082,9 +1233,14 @@ But writing a fixpoint (either with the \texttt{\DUrole{code}{\DUrole{highlight}
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{o}{+}
+      \PY{o}{+}
     \end{input}
     \sep
     \begin{output}
@@ -1107,15 +1263,24 @@ But writing a fixpoint (either with the \texttt{\DUrole{code}{\DUrole{highlight}
     \end{output}
   \end{sentence}
   \sep
-  \begin{sentence}
-    \begin{input}
-      \PY{n+nb}{constructor}\PY{o}{;}~\PY{n+nb}{apply}~\PY{n}{even\PYZus{}Even\PYZus{}fp}\PY{o}{;}~\PY{n+nb+bp}{assumption}\PY{o}{.}\nl
-    \end{input}
-  \end{sentence}
+  \begin{txt}
+    ~
+  \end{txt}
   \sep
   \begin{sentence}
     \begin{input}
-      ~~~~\PY{o}{+}
+      \PY{n+nb}{constructor}\PY{o}{;}~\PY{n+nb}{apply}~\PY{n}{even\PYZus{}Even\PYZus{}fp}\PY{o}{;}~\PY{n+nb+bp}{assumption}\PY{o}{.}
+    \end{input}
+  \end{sentence}
+  \sep
+  \begin{txt}
+    \nl
+    ~~~~
+  \end{txt}
+  \sep
+  \begin{sentence}
+    \begin{input}
+      \PY{o}{+}
     \end{input}
     \sep
     \begin{output}
@@ -1138,11 +1303,19 @@ But writing a fixpoint (either with the \texttt{\DUrole{code}{\DUrole{highlight}
     \end{output}
   \end{sentence}
   \sep
+  \begin{txt}
+    ~
+  \end{txt}
+  \sep
   \begin{sentence}
     \begin{input}
-      \PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{;}~\PY{n+nb}{apply}~\PY{n}{even\PYZus{}Even\PYZus{}fp}\PY{o}{;}~\PY{n+nb+bp}{assumption}\PY{o}{.}\nl
+      \PY{n+nb}{inversion}~\PY{l+m+mi}{1}\PY{o}{;}~\PY{n+nb}{apply}~\PY{n}{even\PYZus{}Even\PYZus{}fp}\PY{o}{;}~\PY{n+nb+bp}{assumption}\PY{o}{.}
     \end{input}
   \end{sentence}
+  \sep
+  \begin{txt}
+    \nl
+  \end{txt}
   \sep
   \begin{sentence}
     \begin{input}

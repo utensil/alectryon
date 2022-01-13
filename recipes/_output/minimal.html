@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" class="alectryon-standalone" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta name="generator" content="Docutils 0.16: http://docutils.sourceforge.net/" />
+<meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 <title>Compiling without Alectryon</title>
 <link rel="stylesheet" href="alectryon.css" type="text/css" />
 <link rel="stylesheet" href="docutils_basic.css" type="text/css" />
@@ -14,7 +14,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-<div class="alectryon-root alectryon-centered"><div class="alectryon-banner">Built with <a href="https://github.com/cpitclaudel/alectryon/">Alectryon</a>, running Coq+SerAPI. Bubbles (<span class="alectryon-bubble"></span>) indicate interactive fragments: hover for details, tap to reveal contents. Use <kbd>Ctrl+↑</kbd> <kbd>Ctrl+↓</kbd> to navigate, <kbd>Ctrl+🖱️</kbd> to focus. On Mac, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.</div><div class="document" id="compiling-without-alectryon">
+<div class="alectryon-root alectryon-centered"><div class="alectryon-banner">Built with <a href="https://github.com/cpitclaudel/alectryon/">Alectryon</a>, running Coq+SerAPI v8.13.0+0.13.0. Bubbles (<span class="alectryon-bubble"></span>) indicate interactive fragments: hover for details, tap to reveal contents. Use <kbd>Ctrl+↑</kbd> <kbd>Ctrl+↓</kbd> to navigate, <kbd>Ctrl+🖱️</kbd> to focus. On Mac, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.<br>Hover-Settings: Show types:<input id="toggleswitch" type="checkbox" onClick="toggleShowTypes(this);"> Show goals:<input id="toggleswitch" type="checkbox" onClick="toggleShowGoals(this);" checked><br></div><div class="document" id="compiling-without-alectryon">
 <h1 class="title">Compiling without Alectryon</h1>
 
 <p>Coq files can always be compiled without Alectryon.  reST files are tricker, since they have <tt class="docutils literal">..coq ::</tt> directives.  The repository contains a standalone compiler that treats these directives as code blocks and includes no-op definitions for Alectryon-specific roles:</p>
@@ -28,14 +28,14 @@ $ cd ..; python -m alectryon.minimal recipes/minimal.rst recipes/minimal.no-alec
 <h1>Directives</h1>
 <dl class="docutils">
 <dt>Coq code:</dt>
-<dd><div class="first last"><pre class="alectryon-io highlight"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input checked="checked" class="alectryon-toggle" id="minimal-rst-chk0" style="display: none" type="checkbox"><label class="alectryon-input" for="minimal-rst-chk0"><span class="kn">Print</span> nat.</label><small class="alectryon-output"><div><div class="alectryon-messages"><blockquote class="alectryon-message" id="minimal-rst-s-print-msg-nat-0"><span class="kn">Inductive</span> <span class="nf">nat</span> : <span class="kt">Set</span> :=  O : nat | S : nat -&gt; nat
+<dd><div class="first last"><pre class="alectryon-io type-info-hidden highlight"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input checked="checked" class="alectryon-toggle" id="minimal-rst-chk0" style="display: none" type="checkbox"><label class="alectryon-input" for="minimal-rst-chk0"><div class="alectryon-token"><span class="kn">Print</span> nat.</div><div class="alectryon-token"></div></label><small class="alectryon-output"><div><div class="alectryon-messages"><blockquote class="alectryon-message" id="minimal-rst-s-print-msg-nat-0"><span class="kn">Inductive</span> <span class="nf">nat</span> : <span class="kt">Set</span> :=  O : nat | S : nat -&gt; nat
 
 <span class="kn">Arguments</span> S _%nat_scope<span class="alectryon-mref-marker">1</span></blockquote></div></div></small></span></pre></div></dd>
 </dl>
 <input type="checkbox" class="alectryon-toggle" id="alectryon-toggle-0" /><label for="alectryon-toggle-0" class="alectryon-toggle-label">Display all goals and responses</label><div class="alectryon-container docutils container">
 <dl class="docutils">
 <dt>Quotes:</dt>
-<dd><div class="first last"><pre class="alectryon-block highlight"><!-- Generator: Alectryon --><span class="kn">Print</span> nat.</pre></div></dd>
+<dd><div class="first last"><pre class="alectryon-block highlight"><!-- Generator: Alectryon --><div class="alectryon-token"><span class="kn">Print</span> nat.</div><div class="alectryon-token"></div></pre></div></dd>
 <dt>Assertions:</dt>
 <dd></dd>
 </dl>
