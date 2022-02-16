@@ -778,6 +778,54 @@ def lean3_attach_commas(fragments):
                 grouped[idx] = Text(rest) if rest else None
     return [g for g in grouped if g is not None]
 
+LEAN_WHITESPACE_PREFIX = re.compile(r"^\s+")
+LEAN_WHITESPACE_POSTFIX = re.compile(r"\s+$")
+
+def lean4_trim_whitespace(fragments):
+    """ Trims the whitespaces in front and after a sentence.
+
+    This pass removes all prefixes and postfixes of whitespaces and newlines
+    of a sentences and transforms these pre and postfixes into separate
+    Text fragments.
+    """
+    transformed = []
+    for fr in fragments:
+        if isinstance(fr, RichSentence):
+            prefix = FragmentContent.create()
+            center = fr.input.contents
+            postfix = FragmentContent.create()
+            prefix_match = LEAN_WHITESPACE_PREFIX.search(str(center))
+            if prefix_match:
+                split = center.split_at_pos(prefix_match.end())
+                prefix, center = split[0], split[1]
+            postifx_match = LEAN_WHITESPACE_POSTFIX.search(str(center))
+            if postifx_match:
+                split = center.split_at_pos(postifx_match.start())
+                center, postfix = split[0], split[1]
+            transformed.append(Text(prefix))
+            new_input = fr.input._replace(contents=center)
+            transformed.append(fr._replace(input=new_input))
+            transformed.append(Text(postfix))
+        else:
+            transformed.append(fr)
+    return transformed
+
+LEAN4_WHITESPACE_ONLY = re.compile(r"^\s*$")
+
+def lean4_transform_whitespace_to_text(fragments):
+    """ Transforms each sentence that only contains whitespaces to a Text fragment.
+    """
+    transformed = []
+    for fr in fragments:
+        if isinstance(fr, RichSentence):
+            if LEAN4_WHITESPACE_ONLY.match(str(fr.input.contents)):
+                transformed.append(Text(fr.input.contents))
+            else:
+                transformed.append(fr)
+        else:
+            transformed.append(fr)
+    return transformed
+
 def transform_contents_to_tokens(fragments):
     """ Compatibility method to replace str instances in Fragment.contents with new Token tuple:
     >>> [Text(contents="abcd"), Text(contents=[FragmentToken(raw="xyz")])]
@@ -817,6 +865,8 @@ DEFAULT_TRANSFORMS = {
     ],
     "lean4": [
         transform_contents_to_tokens,
+        lean4_trim_whitespace,
+        lean4_transform_whitespace_to_text,
         coalesce_text,
         enrich_sentences,
         read_io_comments("lean4"),
