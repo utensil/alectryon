@@ -88,7 +88,7 @@ class Lean4(CLIDriver):
     def annotate(self, chunks):
         document = EncodedDocument(chunks, "\n", encoding="utf-8")
         self.resolve_lake_arg()
-        result = transform_contents_to_tokens(self.run_leanink_document(document))
+        result = transform_contents_to_tokens(self.run_leanInk_document(document))
 
         if not result:
             return list([])
