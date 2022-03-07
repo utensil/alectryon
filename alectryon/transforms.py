@@ -778,15 +778,12 @@ def lean3_attach_commas(fragments):
                 grouped[idx] = Text(rest) if rest else None
     return [g for g in grouped if g is not None]
 
-LEAN_WHITESPACE_PREFIX = re.compile(r"^\s+")
-LEAN_WHITESPACE_POSTFIX = re.compile(r"\s+$")
+LEAN_TRIM_PREFIX = re.compile(r"^\s+")
+LEAN_TRIM_POSTFIX = re.compile(r"(\s|;)+$")
 
-def lean4_trim_whitespace(fragments):
-    """ Trims the whitespaces in front and after a sentence.
-
-    This pass removes all prefixes and postfixes of whitespaces and newlines
-    of a sentences and transforms these pre and postfixes into separate
-    Text fragments.
+def lean4_trim_sentences(fragments):
+    """This pass removes all prefixes and postfixes of whitespaces, newlines, or semicolons
+    of a sentences and transforms these pre- and postfixes into separate Text fragments.
     """
     transformed = []
     for fr in fragments:
@@ -794,11 +791,11 @@ def lean4_trim_whitespace(fragments):
             prefix = FragmentContent.create()
             center = fr.input.contents
             postfix = FragmentContent.create()
-            prefix_match = LEAN_WHITESPACE_PREFIX.search(str(center))
+            prefix_match = LEAN_TRIM_PREFIX.search(str(center))
             if prefix_match:
                 split = center.split_at_pos(prefix_match.end())
                 prefix, center = split[0], split[1]
-            postifx_match = LEAN_WHITESPACE_POSTFIX.search(str(center))
+            postifx_match = LEAN_TRIM_POSTFIX.search(str(center))
             if postifx_match:
                 split = center.split_at_pos(postifx_match.start())
                 center, postfix = split[0], split[1]
@@ -865,10 +862,11 @@ DEFAULT_TRANSFORMS = {
     ],
     "lean4": [
         transform_contents_to_tokens,
-        lean4_trim_whitespace,
+        lean4_trim_sentences,
         lean4_transform_whitespace_to_text,
         coalesce_text,
         enrich_sentences,
+        group_hypotheses,
         read_io_comments("lean4"),
         process_io_annots
     ],

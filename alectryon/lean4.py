@@ -24,7 +24,7 @@ from pathlib import Path
 from alectryon import json
 
 from alectryon.json import PlainSerializer
-from .core import CLIDriver, EncodedDocument, FragmentContent, indent, Text, FragmentToken
+from .core import CLIDriver, EncodedDocument, Text
 from .transforms import transform_contents_to_tokens
 
 class Lean4(CLIDriver):
@@ -46,21 +46,26 @@ class Lean4(CLIDriver):
     LAKE_TMP_FILE_PATH = "lakefile.lean"
 
     def __init__(self, args=(), fpath="-", binpath=None):
-        super().__init__(args, fpath, binpath)
+        super().__init__(args=args, fpath=fpath, binpath=binpath)
         self.lake_file_path = None
 
-    def run_leanink_document(self, encoded_document):
-        r"""
-        Run LeanInk with encoded_document file.
-        """
+    def run_leanInk_document(self, encoded_document: EncodedDocument):
+        "Run LeanInk with encoded_document file."
         with tempfile.TemporaryDirectory(prefix=self.TMP_PREFIX) as temp_directory:
-            input_file = Path(temp_directory) / os.path.basename(self.fpath.with_suffix(self.LEAN_FILE_EXT))
+            input_file_name = self.fpath.with_suffix(self.LEAN_FILE_EXT)
+            input_file = Path(temp_directory) / os.path.basename(input_file_name)
             input_file.write_bytes(encoded_document.contents)
             working_directory = temp_directory
+
             if self.lake_file_path is not None:
                 working_directory = os.path.dirname(os.path.realpath(self.lake_file_path))
                 self.user_args += [self.LAKE_ENV_KEY, self.LAKE_TMP_FILE_PATH]
-            self.run_cli(working_directory=working_directory, capture_output=False, more_args=[str(os.path.abspath(input_file))])
+
+            input_file_path = str(os.path.abspath(input_file))
+            self.run_cli(working_directory=working_directory,
+                         capture_output=False,
+                         more_args=[input_file_path])
+
             output_file = input_file.with_suffix(self.LEAN_FILE_EXT + self.LEAN_INK_FILE_EXT)
             content = output_file.read_text(encoding="utf-8")
             json_result = json.loads(content)
@@ -68,9 +73,7 @@ class Lean4(CLIDriver):
             return tuple_result
     
     def resolve_lake_arg(self):
-        r"""
-        Remove lake argument from user_args for manual evaluation.
-        """
+        "Remove lake argument from user_args for manual evaluation."
         new_user_args = []
         self.lake_file_path = None
         for (index, arg) in enumerate(self.user_args, start=0):
@@ -94,6 +97,4 @@ class Lean4(CLIDriver):
         # find out exactly when, but this workaround seems to work for almost all cases.
         if result[-1].contents.endswith("\n"):
             return list(document.recover_chunks(result))
-        else:
-            result += [Text(contents=FragmentContent.create("\n"))]
-            return list(document.recover_chunks(result))
+        return list(document.recover_chunks(result + [Text(contents="\n")]))
