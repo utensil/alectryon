@@ -4,7 +4,7 @@
 
 A library to process Coq and Lean snippets embedded in text documents, showing goals and messages for each input sentence.  Also a literate programming toolkit.  The goal of Alectryon is to make it easy to write textbooks, blog posts, and other documents that mix interactive proofs and prose.
 
-Alectryon originally supported Coq only.  Support for Lean is preliminary and restricted to `Lean 3 <lean3_>`__.
+Alectryon originally supported Coq only. Both `Lean 4 <lean4_>`__ and `Lean 3 <lean3_>`__ are supported. `Lean 3 <lean3_>`__ support is preliminary.
 
 .. image:: etc/screenshot.svg
    :width: 100%
@@ -483,6 +483,37 @@ See `<recipes/alectryon_custom_driver.py>`__ for a concrete example.
 Other proof assistants
 ======================
 
+.. _lean4:
+
+Lean 4
+------
+
+Alectryon has support for Lean 4. LeanInk (`LeanInk <https://github.com/leanprover/LeanInk>`_) is required to use Alectryon with Lean 4 files.
+HTML and LaTeX output is supported from plain ``.lean`` source files and from ``.rst`` files.
+The reStructuredText directive for Lean 4 is ``.. lean4::``, for Markdown/MyST files it is ``{lean4}``. The literate delimiter is ``/-!``:
+
+- Include Lean 4 code in reStructuredText files like this:
+
+  .. code-block:: rst
+
+     Some reST prose.
+
+     .. lean4::
+
+        … some Lean 4 code
+
+- Include reStructuredText prose in Lean 4 files like this:
+
+  .. code-block:: lean
+
+     … some Lean 4 code
+
+     /-!
+     Some reST prose.
+     -/
+
+See `<recipes/plain-lean4.lean>`__, `<recipes/lean4-tactics.rst>`__, `<recipes/lean4-tactics-myst.md>`__ and `<recipes/literate-lean4.lean>`__  for examples.
+
 .. _lean3:
 
 Lean 3
@@ -490,9 +521,9 @@ Lean 3
 
 Alectryon has preliminary support for Lean 3.
 
-Recording Lean's output and generating HTML or LaTeX is supported, from plain ``.lean`` files and from ``.rst`` files using the ``.. lean3::`` directive (as well as Markdown/MyST files using the ``{lean3}`` directive).  Language-agnostic features like caching work.  The literate delimiter is ``/-|``; in other words, you may write:
+Recording Lean's output and generating HTML or LaTeX is supported, from plain ``.lean`` files and from ``.rst`` files using the ``.. lean3::`` directive (as well as Markdown/MyST files using the ``{lean3}`` directive).  Language-agnostic features like caching work.  The literate delimiter is ``/-!``; in other words, you may write:
 
-- Lean 3 code in reStructuredText files, like this:
+- Include Lean 3 code in reStructuredText files like this:
 
   .. code-block:: rst
 
@@ -502,17 +533,17 @@ Recording Lean's output and generating HTML or LaTeX is supported, from plain ``
 
         … some Lean 3 code
 
-- reStructuredText prose in Lean3 files, like this:
+- Include reStructuredText prose in Lean 3 files like this:
 
   .. code-block:: lean
 
      … some Lean 3 code
 
-     /-|
+     /-!
      Some reST prose.
-     |-/
+     -/
 
-See `<recipes/plain.lean>`__ and `<recipes/lean3-tutorial.rst>`__ for examples.
+See `<recipes/plain-lean3.lean>`__ and `<recipes/lean3-tutorial.rst>`__ for examples.
 
 The following features are missing:
 
@@ -522,7 +553,7 @@ The following features are missing:
 Support for quoting snippets and displaying or hiding sentences is partial.
 
 For a more detailed TODO list, see the header of `<alectryon/lean3.py>`__.
-
+ 
 Polyglot documents
 ------------------
 

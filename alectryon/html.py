@@ -61,6 +61,9 @@ HEADER = (
     'Bubbles (<span class="alectryon-bubble"></span>) indicate interactive fragments: hover for details, tap to reveal contents. '
     'Use <kbd>Ctrl+↑</kbd> <kbd>Ctrl+↓</kbd> to navigate, <kbd>Ctrl+🖱️</kbd> to focus. '
     'On Mac, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.'
+    '<br>Hover-Settings:'
+    ' Show types:<input id="toggleswitch" type="checkbox" onClick="toggleShowTypes(this);">'
+    ' Show goals:<input id="toggleswitch" type="checkbox" onClick="toggleShowGoals(this);" checked><br>'
     '</div>'
 )
 
@@ -188,7 +191,8 @@ class HtmlGenerator(Backend):
 
     def gen_input(self, fr, toggle):
         cls = "alectryon-input" + (" alectryon-failed" if fr.annots.fails else "")
-        with self.gen_clickable(toggle, cls, self.highlight_enriched(fr.input)):
+        with self.gen_clickable(toggle, cls):
+            self.highlight_enriched(fr.input)
             self.gen_mrefs(fr)
             self.gen_mrefs(fr.input)
 
@@ -235,10 +239,44 @@ class HtmlGenerator(Backend):
 
     def gen_fragment(self, fr):
         if isinstance(fr, Text):
-            tags.span(self.highlight(fr.contents), cls="alectryon-wsp")
+            with tags.span(cls="alectryon-wsp"):
+                self.gen_tokens(fr.contents.tokens)
         else:
             assert isinstance(fr, RichSentence)
             self.gen_sentence(fr)
+
+    def gen_tokens(self, tokens):
+        for token in tokens:
+            self.gen_token(token)
+
+    def gen_typeinfo(self, typeinfo):
+        with tags.blockquote(cls="alectryon-goal"):
+            with tags.div(cls="goal-hyps"):
+                with tags.span(cls="hyp-type"):
+                    self.gen_names([typeinfo.name])
+                    tags.b(": ")
+                    tags.span(typeinfo.type)
+
+    def gen_docstring(self, docstring):
+        tags.blockquote(docstring, cls="alectryon-goal alectryon-docstring")
+
+    def gen_token(self, token):
+        with tags.span(cls="alectryon-token"):
+            if (token.typeinfo is not None) or (token.docstring is not None):
+                base_cls = "alectryon-type-info-wrapper"
+                cls = base_cls if token.docstring is None else base_cls + " full-width"
+                with tags.div(cls=cls):
+                    with tags.small(cls="alectryon-type-info").add(tags.div(cls="alectryon-goals")):
+                        if token.typeinfo is not None:
+                            self.gen_typeinfo(token.typeinfo)
+                            if token.docstring is not None:
+                                tags.span(cls="goal-separator")
+                        if token.docstring is not None:
+                            self.gen_docstring(token.docstring)
+            if token.link is not None:
+                tags.a(self.highlight(token), href=token.link)
+            else:
+                self.highlight(token)
 
     @staticmethod
     def gen_ids(ids):
@@ -272,7 +310,7 @@ class HtmlGenerator(Backend):
 
     def gen_fragments(self, fragments, ids=(), classes=()):
         """Serialize a list of `fragments` to HTML."""
-        with self._gen_block(tags.pre, ids, ("alectryon-io", "highlight", *classes)) as pre:
+        with self._gen_block(tags.pre, ids, ("alectryon-io", "type-info-hidden", "highlight", *classes)) as pre:
             fragments = transforms.apply_transforms(fragments, [
                 transforms.group_whitespace_with_code,
                 transforms.commit_io_annotations

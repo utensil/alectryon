@@ -22,15 +22,7 @@
 
 """reStructuredText support for Alectryon.
 
-This file defines directives that format their contents using Alectryon::
-
-    .. coq::
-
-        Check nat.
-
-    .. lean3::
-
-        #check nat.
+This file defines directives that format their contents using Alectryon.
 
 These directives support various arguments to control the appearance of the
 output; check out the README for details.
@@ -48,8 +40,7 @@ directive in your document, and you can ommit it entirely by setting
 contents following the checkbox are wrapped in a container with class
 ``alectryon-container``).
 
-Inline Coq highlighting is provided by the ``:coq:`` role (use ``:lean3:`` for
-Lean code).  To replace Pygments' default highlighters with Alectryon's
+To replace Pygments' default highlighters with Alectryon's
 everywhere, call ``alectryon.pygments.replace_builtin_lexer()``.
 
 If you write lots of inline code snippets, consider calling ``set_default_role``,
@@ -795,8 +786,12 @@ def DriverDirective(lang: str):
 DRIVER_DIRECTIVES = [DriverDirective(lang) for lang in core.ALL_LANGUAGES]
 
 class Lean3Directive(ProverDirective):
-    """Highlight and annotate a Coq snippet."""
+    """Highlight and annotate a Lean 3 snippet."""
     name = "lean3"
+
+class Lean4Directive(ProverDirective):
+    """Highlight and annotate a Lean 4 snippet."""
+    name = "lean4"
 
 class AlectryonToggleDirective(Directive):
     """Display a checkbox allowing readers to show all output at once."""
@@ -1245,6 +1240,10 @@ class RSTLean3Parser(RSTLiterateParser):
     LANG = "lean3"
     supported = ("lean3",)
 
+class RSTLean4Parser(RSTLiterateParser):
+    LANG = "lean4"
+    supported = ("lean4", "lean")
+
 # Writer
 # ------
 
@@ -1442,6 +1441,7 @@ Pipeline = namedtuple("Pipeline", "reader parser translator writer")
 PARSERS = {
     "coq+rst": (__name__, "RSTCoqParser"),
     "lean3+rst": (__name__, "RSTLean3Parser"),
+    "lean4+rst": (__name__, "RSTLean4Parser"),
     "rst": ("docutils.parsers.rst", "Parser"),
     "md": ("alectryon.myst", "Parser"),
 }

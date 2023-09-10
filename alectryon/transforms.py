@@ -28,7 +28,7 @@ from copy import copy
 from collections import namedtuple
 
 from . import markers
-from .core import Sentence, Text, Names, Enriched, \
+from .core import Fragment, FragmentContent, Sentence, Text, FragmentToken, Names, Enriched, \
     RichHypothesis, RichGoal, RichMessage, RichCode, \
     Goals, Messages, RichSentence, ALL_LANGUAGES
 
@@ -135,7 +135,8 @@ ONE_IO_ANNOT_RE = re.compile(
 _IO_ANNOTS_IN_COMMENT = r"\s+(?:{}\s+)+".format(ONE_IO_ANNOT)
 _IO_COMMENT_RE = {
     "coq": r"[ \t]*[(][*]{}[*][)]",
-    "lean3": r"[ \t]*[/][-]{}[-][/]"
+    "lean3": r"[ \t]*[/][-]{}[-][/]",
+    "lean4": r"[ \t]*[/][-]{}[-][/]"
 }
 IO_COMMENT_RE = {
     lang: re.compile(
@@ -199,9 +200,9 @@ def inherit_io_annots(fragments, annots):
         yield fr
 
 def __read_io_comments(annots, contents, lang, must_match=True):
-    for m in IO_COMMENT_RE[lang].finditer(contents):
+    for m in IO_COMMENT_RE[lang].finditer(str(contents)):
         _update_io_annots(annots, m.group(0), ONE_IO_ANNOT_RE, must_match=must_match)
-    return IO_COMMENT_RE[lang].sub("", contents)
+    return contents.re_sub(IO_COMMENT_RE[lang])
 
 def _contents(obj):
     if isinstance(obj, RichSentence):
@@ -238,7 +239,7 @@ def read_io_comments(lang):
 def _find_marked(sentence, path):
     assert isinstance(sentence, RichSentence)
 
-    if "s" in path and not path["s"].match(sentence.input.contents):
+    if "s" in path and not path["s"].match(str(sentence.input.contents)):
         return
 
     if "msg" in path:
@@ -282,7 +283,7 @@ def process_io_annots(fragments):
                     reqd = False
                 if reqd:
                     MSG = "No match found for `{}` in `{}`"
-                    yield ValueError(MSG.format(raw, fr.input.contents))
+                    yield ValueError(MSG.format(raw, str(fr.input.contents)))
 
             for obj in _find_hidden_by_annots(fr):
                 obj.props["enabled"] = False
@@ -298,7 +299,7 @@ def process_io_annots(fragments):
 
             if not fr.annots.unfold and not _enabled(fr.input) and any_output:
                 MSG = "Cannot show output of {!r} without .in or .unfold."
-                yield ValueError(MSG.format(fr.input.contents))
+                yield ValueError(MSG.format(str(fr.input.contents)))
         yield fr
 
 def _enabled(o):
@@ -396,9 +397,9 @@ def strip_ids_and_props(obj, props):
 LEADING_BLANKS_RE = re.compile(r'\A([ \t]*(?:\n|\Z))?(.*?)([ \t]*)\Z',
                                flags=re.DOTALL)
 
-def isolate_blanks(txt):
+def isolate_blanks(contents: FragmentContent):
     """Split `txt` into blanks and an optional newline, text, and blanks."""
-    return LEADING_BLANKS_RE.match(txt).groups()
+    return contents.re_match_groups(LEADING_BLANKS_RE)
 
 def group_whitespace_with_code(fragments):
     r"""Attach spaces to neighboring sentences.
@@ -445,9 +446,9 @@ def group_whitespace_with_code(fragments):
 
 COQ_BULLET = re.compile(r"\A\s*[-+*]+\s*\Z")
 def is_coq_bullet(fr):
-    return COQ_BULLET.match(fr.input.contents)
+    return COQ_BULLET.match(str(fr.input.contents))
 
-def _attach_comments_to_code(lang, fragments, predicate=lambda _: True):
+def _attach_comments_to_code(lang, fragments, predicate=lambda _: True): # TODO: Check Support FragmentContents
     """Attach comments immediately following a sentence to the sentence itself.
 
     This is to support this common pattern::
@@ -480,8 +481,8 @@ def _attach_comments_to_code(lang, fragments, predicate=lambda _: True):
         prev = grouped[idx - 1] if idx > 0 else None
         prev_is_sentence = isinstance(prev, RichSentence)
         if prev_is_sentence and predicate(prev) and isinstance(fr, Text):
-            best = prefix = StringView(fr.contents, 0, 0)
-            for part in partition(lang, fr.contents):
+            best = prefix = StringView(str(fr.contents), 0, 0)
+            for part in partition(lang, str(fr.contents)):
                 if "\n" in part.v:
                     break
                 if isinstance(part, Code):
@@ -490,9 +491,11 @@ def _attach_comments_to_code(lang, fragments, predicate=lambda _: True):
                 if isinstance(part, Comment):
                     best = prefix
             if best:
-                rest = fr.contents[len(best):]
-                grouped[idx - 1] = _replace_contents(prev, _contents(prev) + str(best))
-                grouped[idx] = Text(rest) if rest else None
+                split = fr.contents.split_at_pos(len(best))
+                token_best = split[0]
+                token_rest = split[1]
+                grouped[idx - 1] = _replace_contents(prev, _contents(prev) + token_best)
+                grouped[idx] = Text(token_rest) if str(token_rest) else None
     return [g for g in grouped if g is not None]
 
 def attach_comments_to_code(lang_name):
@@ -548,7 +551,7 @@ COQ_FAIL_MSG_RE = re.compile(r"^The command has indeed failed with message:\s+")
 
 def is_coq_fail(fr):
     return (isinstance(fr, RichSentence) and fr.annots.fails
-            and COQ_FAIL_RE.match(fr.input.contents))
+            and COQ_FAIL_RE.match(str(fr.input.contents)))
 
 def strip_coq_failures(fragments):
     for fr in fragments:
@@ -556,7 +559,7 @@ def strip_coq_failures(fragments):
             for msgs in fragment_message_sets(fr):
                 for idx, r in enumerate(msgs):
                     msgs[idx] = r._replace(contents=COQ_FAIL_MSG_RE.sub("", r.contents))
-            fr = _replace_contents(fr, COQ_FAIL_RE.sub("", fr.input.contents))
+            fr = _replace_contents(fr, fr.input.contents.re_sub(COQ_FAIL_RE))
         yield fr
 
 def dedent(fragments):
@@ -579,17 +582,17 @@ def _check_line_lengths(lines, first_linum, threshold, upto):
             yield first_linum + ln, line
 
 def find_long_lines(fragments, threshold):
-    linum, prefix = 0, ""
+    linum, prefix = 0, FragmentContent([])
     for fr in fragments:
         if hasattr(fr, "props") and not _enabled(fr):
             continue
-        prefix += "".join(getattr(fr, "prefixes", ()))
-        suffix = "".join(getattr(fr, "suffixes", ()))
-        lines = (prefix + (_contents(fr) or "") + suffix).split("\n")
+        prefix += FragmentToken("".join(getattr(fr, "prefixes", ())))
+        suffix = FragmentToken("".join(getattr(fr, "suffixes", ())))
+        lines = FragmentContent(prefix.tokens + (_contents(fr) or FragmentContent([])).tokens + [suffix]).split_at_str("\n")
         yield from _check_line_lengths(lines, linum, threshold, len(lines) - 1)
         linum += len(lines) - 1
         prefix = lines[-1]
-    lines = prefix.split("\n")
+    lines = prefix.split_at_str("\n")
     yield from _check_line_lengths(lines, linum, threshold, len(lines))
 
 COQ_CHUNK_DELIMITER = re.compile(r"(?:[ \t]*\n){2,}")
@@ -610,9 +613,9 @@ def partition_fragments(fragments, delim=COQ_CHUNK_DELIMITER):
     partitioned = [[]]
     for fr in fragments:
         if isinstance(fr, Text):
-            m = delim.search(fr.contents)
+            m = delim.search(str(fr.contents))
             if m:
-                before, after = fr.contents[:m.start()], fr.contents[m.end():]
+                before, after = fr.contents.split_at_pos(m.start())[0], fr.contents.split_at_pos(m.end())[1]
                 if before:
                     partitioned[-1].append(Text(before))
                 if partitioned[-1]:
@@ -629,13 +632,13 @@ RBLANKS = re.compile(r"(\n[ \t]*)+\Z")
 def strip_text(fragments):
     for idx, fr in enumerate(fragments):
         if isinstance(fr, Text):
-            fragments[idx] = fr = Text(contents=LBLANKS.sub("", fr.contents))
+            fragments[idx] = fr = Text(contents=fr.contents.re_sub(LBLANKS))
             if not fr.contents:
                 continue
         break
     for idx, fr in reversed(list(enumerate(fragments))):
         if isinstance(fr, Text):
-            fragments[idx] = fr = Text(contents=RBLANKS.sub("", fr.contents))
+            fragments[idx] = fr = Text(contents=fr.contents.re_sub(RBLANKS))
             if not fr.contents:
                 continue
         break
@@ -680,7 +683,7 @@ def isolate_coqdoc(fragments):
     refined = []
     for fr in fragments:
         if isinstance(fr, Text):
-            for span in partition_literate(COQ, fr.contents, opener=COQDOC_OPEN):
+            for span in partition_literate(COQ, str(fr.contents), opener=COQDOC_OPEN):
                 wrapper = CoqdocFragment if isinstance(span, Comment) else Text
                 refined.append(wrapper(str(span.v)))
         else:
@@ -695,14 +698,15 @@ def isolate_coqdoc(fragments):
             partitioned[-1].fragments.append(fr)
     for part in partitioned:
         if isinstance(part, AlectryonFragments):
-            strip_text(part.fragments)
+            # This is a workaround as isolate_coqdoc does not support FragmentContent yet.
+            # This might cause issues of loosing metadata infos.
+            strip_text(transform_contents_to_tokens(part.fragments))
     return partitioned
 
 SURROUNDING_BLANKS_RE = re.compile(r"\A(\s*)(.*?)(\s*)\Z", re.DOTALL)
 
-
 def split_surrounding_space(fr):
-    before, txt, after = SURROUNDING_BLANKS_RE.match(_contents(fr)).groups()
+    before, txt, after = _contents(fr).re_match_groups(SURROUNDING_BLANKS_RE)
     if before: yield Text(before)
     if txt: yield _replace_contents(fr, txt)
     if after: yield Text(after)
@@ -720,11 +724,11 @@ def lean3_split_comments(fragments):
     from .literate import LEAN3, partition, Code, Comment
     for fr in fragments:
         if isinstance(fr, Text):
-            for part in partition(LEAN3, fr.contents):
+            for part in partition(LEAN3, str(fr.contents)): # TODO: Improve support for FragmentContent
                 if isinstance(part, Code):
-                    yield from split_surrounding_space(Sentence(str(part.v), [], []))
+                    yield from split_surrounding_space(Sentence(FragmentContent.create(str(part.v)), [], []))
                 if isinstance(part, Comment):
-                    yield from split_surrounding_space(Text(str(part.v)))
+                    yield from split_surrounding_space(Text(FragmentContent.create(str(part.v))))
         else:
             yield fr
 
@@ -735,9 +739,9 @@ def lean3_truncate_vernacs(fragments):
     r"""Strip trailing whitespace in vernacs like ``#check``.
 
     >>> from .core import Message as M
-    >>> list(lean3_truncate_vernacs([Sentence("#check (1 \n+ 1)\n\n", [M("…")], [])]))
-    [Sentence(contents='#check (1 \n+ 1)', messages=[Message(contents='…')], goals=[]),
-     Text(contents='\n\n')]
+    >>> list(lean3_truncate_vernacs([Sentence(FragmentContent.create("#check (1 \n+ 1)\n\n"), [M("…")], [])]))
+    [Sentence(contents=FragmentContent('#check (1 \n+ 1)'), messages=[Message(contents='…')], goals=[]),
+     Text(contents=FragmentContent('\n\n')]
 
     This is only needed in Lean 3: in Lean4 the region for #check statements is
     precisely known (in Lean3 it expands too far).
@@ -745,11 +749,12 @@ def lean3_truncate_vernacs(fragments):
     for fr in fragments:
         # Check that `fr` is a ‘#xyz’ vernac starting at the beginning of a line
         contents = _contents(fr)
-        if isinstance(fr, (Sentence, RichSentence)) and LEAN_VERNAC_RE.match(contents):
-            m = LEAN_TRAILING_BLANKS_RE.search(contents)
+        if isinstance(fr, (Sentence, RichSentence)) and LEAN_VERNAC_RE.match(str(contents)):
+            m = LEAN_TRAILING_BLANKS_RE.search(str(contents))
             if m:
-                yield _replace_contents(fr, contents[:m.start()])
-                fr = Text(contents[m.start():])
+                split = contents.split_at_pos(m.start())
+                yield _replace_contents(fr, split[0])
+                fr = Text(split[1])
         yield fr
 
 LEAN_COMMA_RE = re.compile(r'\A\s*,')
@@ -764,17 +769,78 @@ def lean3_attach_commas(fragments):
     grouped = list(fragments)
     for idx, fr in enumerate(grouped):
         if isinstance(fr, Text) and idx > 0:
-            m = LEAN_COMMA_RE.match(fr.contents)
+            m = LEAN_COMMA_RE.match(str(fr.contents))
             if m and not isinstance(grouped[idx - 1], Text):
                 prev = grouped[idx-1]
-                comma, rest = fr.contents[:m.end()], fr.contents[m.end():]
-                grouped[idx-1] = _replace_contents(prev, _contents(prev) + comma)
+                split = fr.contents.split_at_pos(m.end())
+                comma, rest = split[0], split[1]
+                grouped[idx-1] = _replace_contents(prev, _contents(prev) + FragmentContent.create(comma))
                 grouped[idx] = Text(rest) if rest else None
     return [g for g in grouped if g is not None]
+
+LEAN_TRIM_PREFIX = re.compile(r"^\s+")
+LEAN_TRIM_POSTFIX = re.compile(r"(\s|;)+$")
+
+def lean4_trim_sentences(fragments):
+    """This pass removes all prefixes and postfixes of whitespaces, newlines, or semicolons
+    of a sentences and transforms these pre- and postfixes into separate Text fragments.
+    """
+    transformed = []
+    for fr in fragments:
+        if isinstance(fr, RichSentence):
+            prefix = FragmentContent.create()
+            center = fr.input.contents
+            postfix = FragmentContent.create()
+            prefix_match = LEAN_TRIM_PREFIX.search(str(center))
+            if prefix_match:
+                split = center.split_at_pos(prefix_match.end())
+                prefix, center = split[0], split[1]
+            postifx_match = LEAN_TRIM_POSTFIX.search(str(center))
+            if postifx_match:
+                split = center.split_at_pos(postifx_match.start())
+                center, postfix = split[0], split[1]
+            transformed.append(Text(prefix))
+            new_input = fr.input._replace(contents=center)
+            transformed.append(fr._replace(input=new_input))
+            transformed.append(Text(postfix))
+        else:
+            transformed.append(fr)
+    return transformed
+
+LEAN4_WHITESPACE_ONLY = re.compile(r"^\s*$")
+
+def lean4_transform_whitespace_to_text(fragments):
+    """ Transforms each sentence that only contains whitespaces to a Text fragment.
+    """
+    transformed = []
+    for fr in fragments:
+        if isinstance(fr, RichSentence):
+            if LEAN4_WHITESPACE_ONLY.match(str(fr.input.contents)):
+                transformed.append(Text(fr.input.contents))
+            else:
+                transformed.append(fr)
+        else:
+            transformed.append(fr)
+    return transformed
+
+def transform_contents_to_tokens(fragments):
+    """ Compatibility method to replace str instances in Fragment.contents with new Token tuple:
+    >>> [Text(contents="abcd"), Text(contents=[FragmentToken(raw="xyz")])]
+    [Text(contents=FragmentContent([Token(raw="abcd", None, None)])), Text(contents=FragmentContent([Token(raw="abcd", None, None)]))]
+    """
+    new_fragments = []
+    for fragment in fragments:
+        if isinstance(fragment, RichSentence):
+            new_input = fragment.input._replace(contents=FragmentContent.create(fragment.input.contents))
+            new_fragments.append(fragment._replace(input=new_input))
+        else:
+            new_fragments.append(fragment._replace(contents=FragmentContent.create(fragment.contents)))
+    return new_fragments
 
 
 DEFAULT_TRANSFORMS = {
     "coq": [
+        transform_contents_to_tokens,
         enrich_sentences,
         attach_comments_to_code("coq"),
         group_hypotheses,
@@ -784,6 +850,7 @@ DEFAULT_TRANSFORMS = {
         dedent,
     ],
     "lean3": [
+        transform_contents_to_tokens,
         lean3_attach_commas,
         lean3_split_comments,
         coalesce_text,
@@ -792,7 +859,17 @@ DEFAULT_TRANSFORMS = {
         # attach_comments_to_code("lean3"),
         read_io_comments("lean3"),
         process_io_annots
-    ]
+    ],
+    "lean4": [
+        transform_contents_to_tokens,
+        lean4_trim_sentences,
+        lean4_transform_whitespace_to_text,
+        coalesce_text,
+        enrich_sentences,
+        group_hypotheses,
+        read_io_comments("lean4"),
+        process_io_annots
+    ],
     # Not included:
     #   group_whitespace_with_code (HTML-specific)
     #   commit_io_annotations (breaks mref resolution by removing elements)

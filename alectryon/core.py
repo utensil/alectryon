@@ -18,11 +18,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from functools import reduce
 from typing import Any, DefaultDict, Dict, Iterable, \
     NamedTuple, NoReturn, Optional, Tuple, Union
 
 from collections import deque, namedtuple, defaultdict
 from contextlib import contextmanager
+from dataclasses import dataclass, field
 from importlib import import_module
 from io import TextIOWrapper
 from pathlib import Path
@@ -60,8 +62,10 @@ class DriverInfo(namedtuple("DriverInfo", "name version")):
 Hypothesis = namedtuple("Hypothesis", "names body type")
 Goal = namedtuple("Goal", "name conclusion hypotheses")
 Message = namedtuple("Message", "contents")
+TypeInfo = namedtuple("TypeInfo", "name type")
 Sentence = namedtuple("Sentence", "contents messages goals")
 Text = namedtuple("Text", "contents")
+FragmentToken = namedtuple("FragmentToken", "raw typeinfo docstring link semanticType", defaults=("", None, None, None, None))
 Fragment = Union[Text, Sentence]
 
 class Enriched():
@@ -137,11 +141,20 @@ class Backend:
     def gen_names(self, names): raise NotImplementedError()
     def gen_code(self, code): raise NotImplementedError()
     def gen_txt(self, s): raise NotImplementedError()
+    def gen_token(self, token): raise NotImplementedError()
+    def gen_typeinfo(self, typeinfo): raise NotImplementedError()
 
     def highlight_enriched(self, obj):
         lang = obj.props.get("lang")
         with self.highlighter.override(lang=lang) if lang else nullctx():
-            return self.highlight(obj.contents)
+            if isinstance(obj.contents, str):
+                return self.highlight(obj.contents)
+            else:
+                list = []
+                for token in obj.contents.tokens:
+                    self.gen_token(token)
+                return list
+
 
     def _gen_any(self, obj):
         if isinstance(obj, (Text, RichSentence)):
@@ -156,6 +169,10 @@ class Backend:
             self.gen_code(obj)
         elif isinstance(obj, Names):
             self.gen_names(obj)
+        elif isinstance(obj, FragmentToken):
+            self.gen_token(obj)
+        elif isinstance(obj, TypeInfo):
+            self.gen_typeinfo(obj)
         elif isinstance(obj, str):
             self.gen_txt(obj)
         else:
@@ -307,14 +324,13 @@ class Document:
     def split_fragment(fr: Fragment, cutoff):
         """Split `fr` at position `cutoff`.
 
-        >>> Document.split_fragment(Text("abcxyz"), 3)
-        (Text(contents='abc'), Text(contents='xyz'))
-        >>> Document.split_fragment(Sentence("abcxyz", [Message("out")], []), 3)
-        (Sentence(contents='abc', messages=[], goals=[]),
-         Sentence(contents='xyz', messages=[Message(contents='out')], goals=[]))
+        >>> Document.split_fragment(Text(contents=[FragmentToken(raw='ab'), FragmentToken(raw='cx'), FragmentToken(raw='yz')]), 3)
+        (Text(contents=[FragmentToken(raw='ab'), FragmentToken(raw='c')]), Text(contents=[FragmentToken(raw='x'), FragmentToken(raw='yz')]))
+        >>> Document.split_fragment(Sentence(contents=[FragmentToken(raw='ab'), FragmentToken(raw='cx'), FragmentToken(raw='yz')], [Message("out")], []), 3)
+        (Sentence(contents=[FragmentToken(raw='ab'), FragmentToken(raw='c')], messages=[], goals=[]),
+         Sentence(contents=[FragmentToken(raw='x'), FragmentToken(raw='yz')], messages=[Message(contents='out')], goals=[]))
         """
-        before = fr.contents[:cutoff]
-        after = fr.contents[cutoff:]
+        (before, after) = fr.contents.split_at_pos(cutoff=cutoff)
         fr0: Fragment
         if isinstance(fr, Text):
             fr0 = Text(before)
@@ -326,12 +342,12 @@ class Document:
     def split_fragments(cls, fragments, cutoffs):
         """Split `fragments` at positions `cutoffs`.
 
-        >>> list(Document.split_fragments([Text("abcdwxyz")], [0, 2, 4, 5, 7]))
-        [Text(contents='ab'), Text(contents='cd'),
-         Text(contents='w'), Text(contents='xy'), Text(contents='z')]
-        >>> list(Document.split_fragments([Text("abcd"), Text("wxyz")], [0, 2, 4, 5, 7]))
-        [Text(contents='ab'), Text(contents='cd'),
-         Text(contents='w'), Text(contents='xy'), Text(contents='z')]
+        >>> list(Document.split_fragments([Text(contents=[FragmentToken(raw="abcdwxyz")])], [0, 2, 4, 5, 7]))
+        [Text(contents=[FragmentToken(raw="ab")]), Text(contents=[FragmentToken(raw="cd")]),
+         Text(contents=[FragmentToken(raw="w")]), Text(contents=[FragmentToken(raw="xy")]), Text(contents=[FragmentToken(raw="z")])]
+        >>> list(Document.split_fragments([Text(contents=[FragmentToken(raw="abcd")]), Text(contents=[FragmentToken(raw="wxyz")])], [0, 2, 4, 5, 7]))
+        [Text(contents=[FragmentToken(raw="ab")]), Text(contents=[FragmentToken(raw="cd")]),
+         Text(contents=[FragmentToken(raw="w")]), Text(contents=[FragmentToken(raw="xy")]), Text(contents=[FragmentToken(raw="z")])]
         """
         fragments = deque(cls.with_boundaries(fragments))
         for cutoff in cutoffs:
@@ -359,7 +375,7 @@ class Document:
                 before, after = cls.split_fragment(frs[0].e, cutoff)
                 frs[0] = frs[0]._replace(beg=chunk.end, e=after)
                 chunk_frs.append(before)
-            assert chunk.e == chunk.e[0:0].join(c.contents for c in chunk_frs)
+            assert chunk.e == chunk.e[0:0].join(str(c.contents) for c in chunk_frs)
             yield chunk_frs
         assert not frs
 
@@ -376,7 +392,7 @@ class Document:
         for fragments in grouped:
             if fragments:
                 assert fragments[-1].contents.endswith(separator)
-                contents = fragments[-1].contents[:-len(separator)]
+                (contents, _) = fragments[-1].contents.split_at_pos(-len(separator))
                 fragments[-1] = fragments[-1]._replace(contents=contents)
                 if isinstance(fragments[-1], Text) and not contents:
                     fragments.pop()
@@ -417,6 +433,142 @@ class StderrObserver(Observer):
         sys.stderr.write("{} ({}/{}) {}\n".format(header, level_name, n.level, message))
 
 PrettyPrinted = namedtuple("PrettyPrinted", "sid pp")
+Contents = namedtuple("Contents", "tokens")
+
+@dataclass(frozen=True)
+class FragmentContent:
+    tokens: list[FragmentToken]
+
+    @staticmethod
+    def create(val=[]):
+        if isinstance(val, str):
+            if val:
+                return FragmentContent([FragmentToken(val, None, None)])
+            else:
+                return FragmentContent([])
+        elif isinstance(val, FragmentToken):
+            if val.raw:
+                return FragmentContent([val])
+            else:
+                return FragmentContent([])
+        elif isinstance(val, FragmentContent):
+            return val
+        elif isinstance(val, Contents):
+            return FragmentContent(val.tokens)
+        else:
+            return FragmentContent(val)
+
+    def __add__(self, other):
+        if isinstance(other, FragmentContent):
+            return FragmentContent(self.tokens + other.tokens)
+        elif isinstance(other, FragmentToken):
+            if not other.raw:
+                return FragmentContent(self.tokens)
+            return FragmentContent(self.tokens + [other])
+        elif isinstance(other, list):
+            return FragmentContent(self.tokens.append(other))
+
+    def __len__(self):
+        return reduce(lambda a, b: a + len(b.raw), self.tokens, 0)
+
+    def __str__(self):
+        return "".join(c.raw for c in self.tokens)
+
+    def __eq__(self, other):
+        if isinstance(other, FragmentContent):
+            return self.tokens == other.tokens
+        return False
+
+    def __repr__(self):
+        return "<" + str(self) + ">(" + str(self.tokens) + ")"
+
+    def split_at_str(self, char: str):
+        contents = [FragmentContent([])]
+        for token in self.tokens:
+            splits = token.raw.split(char)
+            if len(splits[0]) > 0:
+                contents[-1].tokens.append(token._replace(raw=splits[0]))
+            for split in splits[1:]:
+                if not split:
+                    contents.append(FragmentContent([]))
+                else:
+                    contents.append(FragmentContent([token._replace(raw=split)]))
+        return contents
+
+    def split_at_pos(self, cutoff: int):
+        """Split the list of tokens at position `cutoff`
+        >>> Document.split_fragment_content([FragmentToken(raw='ab'), FragmentToken(raw='cx'), FragmentToken(raw='yz')], 3)
+        ([FragmentToken(raw='ab'), FragmentToken(raw='c')],[FragmentToken(raw='x'), FragmentToken(raw='yz')])
+        """
+        if cutoff < 0:
+            cutoff = self.__len__() + cutoff
+        if cutoff >= len(self):
+            return [self, FragmentContent([])]
+        before = []
+        after = []
+        position = 0
+        for token in self.tokens:
+            if after:
+                after.append(token)
+                continue
+            if len(token.raw) <= cutoff - position:
+                before.append(token)
+                position += len(token.raw)
+                continue
+            before.append(token._replace(raw=token.raw[:cutoff - position]))
+            after.append(token._replace(raw=token.raw[cutoff - position:]))
+        return [FragmentContent(before), FragmentContent(after)]
+
+    def to_contents(self):
+        return Contents(tokens=self.tokens)
+
+    def endswith(self, string: str):
+        return self.__str__().endswith(string)
+
+    # Replacement for repl.sub()
+    def re_sub(self, repl: re, sub_token: [FragmentToken] = []):
+        """ Replacement method for repl.sub(str, str)
+
+        Substitutes all matches in the str of this fragment with the sub_tokens.
+        sub_tokens defaults to [] which equals removal of any match.
+
+        Returns a FragmentContent with substitute tokens.
+        """
+        tokens = []
+        last = FragmentContent(self.tokens)
+        last_index = 0
+        had_match = False
+        for match in repl.finditer(str(self)):
+            had_match = True
+            first = last.split_at_pos(match.start() - last_index)[0]
+            last = last.split_at_pos(match.end() - last_index)[-1]
+            last_index = match.end()
+            tokens += first.tokens + sub_token
+        if had_match:
+            tokens += last.tokens
+            return FragmentContent(tokens)
+        else:
+            return self
+
+    # Replacement for repl.match().groups()
+    def re_match_groups(self, repl: re):
+        """ Replacement method for repl.match(str).groups()
+
+        Executes match over the whole str of the FragmentContent and returns
+        the groups of this match as FragmentContent.
+
+        Method returns (prefix, center, suffix).
+        Returns None if there is no match.
+        """
+        match = repl.match(str(self))
+        if match is None:
+            return None
+        first_split = self.split_at_pos(match.start())
+        last_split = first_split[1].split_at_pos(match.end())
+        prefix = first_split[0]
+        center = last_split[0]
+        suffix = last_split[1]
+        return prefix, center, suffix
 
 class Driver():
     def __init__(self):
@@ -481,11 +633,11 @@ class CLIDriver(Driver): # pylint: disable=abstract-method
     def _proc_out(cls, p):
         return p.stderr
 
-    def run_cli(self, more_args=()):
+    def run_cli(self, working_directory=None, capture_output=True, more_args=()):
         cmd = [self.resolve_driver(self.binpath),
                *self.CLI_ARGS, *self.user_args, *more_args]
         self._debug_start(cmd)
-        p = subprocess.run(cmd, capture_output=True, check=False, encoding=self.CLI_ENCODING)
+        p = subprocess.run(cmd, cwd=working_directory, capture_output=capture_output, check=False, encoding=self.CLI_ENCODING)
         if p.returncode != 0:
             MSG = "Driver {} ({}) exited with code {}:\n{}"
             raise ValueError(MSG.format(self.NAME, self.binpath, p.returncode,
@@ -558,7 +710,10 @@ DRIVERS_BY_LANGUAGE = {
     },
     "lean3": {
         "lean3_repl": (".lean3", "Lean3")
-    }
+    },
+    "lean4": {
+        "leanInk": (".lean4", "Lean4")
+    },
 }
 
 DEFAULT_DRIVERS = {lang: next(iter(drivers)) for lang, drivers in DRIVERS_BY_LANGUAGE.items()}

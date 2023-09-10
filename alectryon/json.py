@@ -46,7 +46,10 @@ TYPE_OF_ALIASES = {
     "sentence": core.Sentence,
     "goals": core.Goals,
     "messages": core.Messages,
-    "rich_sentence": core.RichSentence,
+    "token": core.FragmentToken,
+    "typeinfo": core.TypeInfo,
+    "contents": core.Contents,
+    "rich_sentence": core.RichSentence
 }
 
 ALIASES_OF_TYPE = {
@@ -74,6 +77,8 @@ class PlainSerializer:
         if isinstance(obj, dict):
             assert "_type" not in obj
             return {k: PlainSerializer.encode(v) for k, v in obj.items()}
+        if isinstance(obj, core.FragmentContent):
+            return PlainSerializer.encode(obj.to_contents())
         type_name = ALIASES_OF_TYPE.get(type(obj).__name__)
         if type_name:
             d: Dict[str, Any] = {"_type": type_name} # Put _type first
@@ -91,7 +96,10 @@ class PlainSerializer:
             obj = {k: PlainSerializer.decode(v) for k, v in js.items()}
             type_name = obj.pop("_type", None) # Avoid mutating `js`
             if type_name:
-                return TYPE_OF_ALIASES[type_name](**obj)
+                tuple_instance = TYPE_OF_ALIASES[type_name](**obj)
+                if tuple_instance is core.Contents:
+                    return core.FragmentContent.create(tuple_instance)
+                return tuple_instance
             return obj
         return js
 
@@ -142,6 +150,8 @@ class DeduplicatingSerializer:
                 if "&" in js: # Reference
                     obj = TYPE_OF_ALIASES[js["&"]](*(decode(v) for v in js["_"]))
                     obj_table.append(obj)
+                    if obj is core.Contents:
+                        return core.FragmentContent.create(obj)
                     return obj
                 return {k: decode(v) for k, v in sorted(js.items())}
             return js
@@ -190,6 +200,8 @@ class FullyDeduplicatingSerializer:
                 return deepcopy(obj) if copy else obj
             obj = _decode(js)
             obj_table.append(obj)
+            if obj is core.Contents:
+                return core.FragmentContent.create(obj)
             return obj
         def _decode(js):
             if isinstance(js, list):

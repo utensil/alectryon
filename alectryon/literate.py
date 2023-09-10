@@ -805,19 +805,19 @@ def rst2code(lang: LangDef, rst):
     ...
     ...      1 + 1
     ... '''))
-    /-|
+    /-!
     Example:
-    |-/
+    -/
     <BLANKLINE>
     def x :=
     <BLANKLINE>
-    /-|
+    /-!
     Second example:
     <BLANKLINE>
     .. lean3::
        :name:
           snd
-    |-/
+    -/
     <BLANKLINE>
       1 + 1
     <BLANKLINE>
@@ -849,8 +849,8 @@ def rst2coq(rst):
 LEAN3 = LangDef(
     "lean3",
     LeanParser,
-    lit_open=r"/-|", lit_close=r"|-/",
-    lit_open_re=r"[/][-][|][ \t]*", lit_close_re=r"[ \t]*[|]?[-][/]\Z",
+    lit_open=r"/-!", lit_close=r"-/",
+    lit_open_re=r"[/][-][!][ \t]*", lit_close_re=r"[ \t]*[-][/]\Z",
     quote_pairs=[("/-", r"/\ -"), ("-/", r"-\ /")]
 )
 
@@ -862,15 +862,32 @@ def rst2lean3(rst):
     """Convert from reStructuredText to Lean3."""
     return rst2code(LEAN3, rst)
 
+LEAN4 = LangDef(
+    "lean4",
+    LeanParser, # We can use the same parser as Lean 3, because the syntax for comments has not changed between the versions.
+    lit_open=r"/-!", lit_close=r"-/",
+    lit_open_re=r"[/][-][!][ \t]*", lit_close_re=r"[ \t]*[-][/]\Z",
+    quote_pairs=[("/-", r"/\ -"), ("-/", r"-\ /")]
+)
+
+def lean42rst(lean):
+    """Convert from Lean4 to reStructuredText."""
+    return code2rst(LEAN4, lean)
+
+def rst2lean4(rst):
+    """Convert from reStructuredText to Lean4."""
+    return rst2code(LEAN4, rst)
+
 LANGUAGES = {
     "coq": COQ,
-    "lean3": LEAN3
+    "lean3": LEAN3,
+    "lean4": LEAN4
 }
 
 # CLI
 # ===
 
-CONVERTERS = (coq2rst, rst2coq, lean32rst, rst2lean3)
+CONVERTERS = (coq2rst, rst2coq, lean32rst, rst2lean3, lean42rst, rst2lean4)
 
 def parse_arguments():
     import argparse
@@ -893,7 +910,7 @@ def parse_arguments():
             parser.error("Reading from standard input requires one of {}.".format(available))
     else:
         _, ext = path.splitext(args.input)
-        ext_fn = {".v": coq2rst, ".lean3": lean32rst, ".rst": rst2coq}
+        ext_fn = {".v": coq2rst, ".lean3": lean32rst, ".lean": lean42rst, ".rst": rst2coq}
         args.fn = ext_fn.get(ext)
         if not args.fn:
             expected = ", ".join(repr(k) for k in ext_fn)

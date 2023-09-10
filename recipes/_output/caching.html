@@ -3,7 +3,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" class="alectryon-standalone" xml:lang="en" lang="en">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<meta name="generator" content="Docutils 0.16: http://docutils.sourceforge.net/" />
+<meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
 <title>Caching results for faster execution</title>
 <link rel="stylesheet" href="alectryon.css" type="text/css" />
 <link rel="stylesheet" href="docutils_basic.css" type="text/css" />
@@ -14,7 +14,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
-<div class="alectryon-root alectryon-centered"><div class="alectryon-banner">Built with <a href="https://github.com/cpitclaudel/alectryon/">Alectryon</a>, running Coq+SerAPI. Bubbles (<span class="alectryon-bubble"></span>) indicate interactive fragments: hover for details, tap to reveal contents. Use <kbd>Ctrl+↑</kbd> <kbd>Ctrl+↓</kbd> to navigate, <kbd>Ctrl+🖱️</kbd> to focus. On Mac, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.</div><div class="document" id="caching-results-for-faster-execution">
+<div class="alectryon-root alectryon-centered"><div class="alectryon-banner">Built with <a href="https://github.com/cpitclaudel/alectryon/">Alectryon</a>, running Coq+SerAPI v8.13.0+0.13.0. Bubbles (<span class="alectryon-bubble"></span>) indicate interactive fragments: hover for details, tap to reveal contents. Use <kbd>Ctrl+↑</kbd> <kbd>Ctrl+↓</kbd> to navigate, <kbd>Ctrl+🖱️</kbd> to focus. On Mac, use <kbd>⌘</kbd> instead of <kbd>Ctrl</kbd>.<br>Hover-Settings: Show types:<input id="toggleswitch" type="checkbox" onClick="toggleShowTypes(this);"> Show goals:<input id="toggleswitch" type="checkbox" onClick="toggleShowGoals(this);" checked><br></div><div class="document" id="caching-results-for-faster-execution">
 <h1 class="title">Caching results for faster execution</h1>
 
 <p>Alectryon can generate cache files to memoize Coq's output, yielding faster compilation when Coq fragments embedded in a document have not changed:</p>
@@ -23,7 +23,7 @@ alectryon --cache-directory _output/ --cache-compression=xz caching.v
 # Coq+reST → HTML, cached to _output/caching.v.cache; produces ‘caching.html’
 </pre>
 <p>(The <tt class="docutils literal"><span class="pre">--cache-compression</span></tt> flag is option; the default is to not compress caches.)</p>
-<pre class="alectryon-io highlight"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="caching-v-chk0" style="display: none" type="checkbox"><label class="alectryon-input" for="caching-v-chk0"><span class="kn">Print</span> nat.</label><small class="alectryon-output"><div><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="kn">Inductive</span> <span class="nf">nat</span> : <span class="kt">Set</span> :=  O : nat | S : nat -&gt; nat
+<pre class="alectryon-io type-info-hidden highlight"><!-- Generator: Alectryon --><span class="alectryon-sentence"><input class="alectryon-toggle" id="caching-v-chk0" style="display: none" type="checkbox"><label class="alectryon-input" for="caching-v-chk0"><div class="alectryon-token"><span class="kn">Print</span> nat.</div></label><small class="alectryon-output"><div><div class="alectryon-messages"><blockquote class="alectryon-message"><span class="kn">Inductive</span> <span class="nf">nat</span> : <span class="kt">Set</span> :=  O : nat | S : nat -&gt; nat
 
 <span class="kn">Arguments</span> S _%nat_scope</blockquote></div></div></small></span></pre>
 </div>
